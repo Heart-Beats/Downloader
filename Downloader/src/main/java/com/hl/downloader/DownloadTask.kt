@@ -121,8 +121,10 @@ internal class DownloadTask(private val context: Context, private val downloadUr
         Log.d(TAG, "existTask: 保存的下载task == $subDownLoadTasks")
         return if (subDownLoadTasks?.isNotEmpty() == true && subDownLoadTasks[0].downLoadUrl == downloadUrl) {
             this.subDownLoadTasks.clear()
-            //如果保存的下载任务不为空，同时下载地址与此次任务相同时 ======》 任务已存在 ----> 添加任务列表
-            this.subDownLoadTasks.addAll(subDownLoadTasks)
+            //如果保存的下载任务不为空，同时下载地址与此次任务相同时 ======》 任务已存在, 添加下载未完成的任务 ----> 添加任务列表
+            this.subDownLoadTasks.addAll(subDownLoadTasks.filter {
+                it.downloadStatus != DownloadStatus.DOWNLOAD_COMPLETE
+            })
             true
         } else {
             false

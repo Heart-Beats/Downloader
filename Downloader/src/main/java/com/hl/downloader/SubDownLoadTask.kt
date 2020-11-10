@@ -1,5 +1,6 @@
 package com.hl.downloader
 
+import android.util.Log
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -7,6 +8,7 @@ import okhttp3.*
 import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
+import java.net.SocketException
 
 /**
  * @Author  张磊  on  2020/11/04 at 15:06
@@ -20,6 +22,10 @@ internal data class SubDownLoadTask(
         var downloadStatus: DownloadStatus = DownloadStatus.READY_TO_DOWNLOAD,
         val saveFile: File
 ) : Callback {
+
+    private companion object{
+        private const val TAG = "SubDownLoadTask"
+    }
 
     private var requestCall: Call? = null
 
@@ -58,18 +64,35 @@ internal data class SubDownLoadTask(
         val byteArray = ByteArray(1024 * 1024)
 
         var len: Int
-        body?.byteStream()?.use { inputStream ->
+        val inputStream = body?.byteStream() ?: return
+
+        try {
             while (inputStream.read(byteArray).also { len = it } != -1) {
                 if (downloadStatus != DownloadStatus.DOWNLOAD_PAUSE || downloadStatus != DownloadStatus.DOWNLOAD_CANCEL) {
                     randomAccessFile.write(byteArray, 0, len)
                     downloadStatus = DownloadStatus.DOWNLOADING
                     completeSize += len
+                    downloadStatusListener?.downloadStatusChange(downloadStatus)
                 }
+
+                if (completeSize >= body.contentLength() && endPos == null || (endPos != null && completeSize > endPos)) {
+                    downloadStatus = DownloadStatus.DOWNLOAD_COMPLETE
+                    downloadStatusListener?.downloadStatusChange(downloadStatus)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "onResponse: ", e)
+
+            if (e is SocketException && e.message == "Socket closed") {
+                downloadStatus = DownloadStatus.DOWNLOAD_CANCEL
+                downloadStatusListener?.downloadStatusChange(downloadStatus)
+            } else{
+                downloadStatus = DownloadStatus.DOWNLOAD_PAUSE
                 downloadStatusListener?.downloadStatusChange(downloadStatus)
             }
+        } finally {
+            inputStream.close()
         }
-        downloadStatus = DownloadStatus.DOWNLOAD_COMPLETE
-        downloadStatusListener?.downloadStatusChange(downloadStatus)
     }
 
     fun downLoadPause() {
