@@ -14,7 +14,9 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import java.math.RoundingMode
 import java.net.HttpURLConnection
+import java.text.DecimalFormat
 
 /**
  * @Author  张磊  on  2020/11/04 at 15:03
@@ -205,7 +207,7 @@ internal class DownloadTask(private val context: Context, private val downloadUr
     private inner class DownloadStatusListener(val needSaveTask: Boolean = true) :
             OnDownloadStatusListener {
 
-        private var lastDownloadProgress = -1
+        private var lastDownloadProgress = -1f
 
         override fun downloadStatusChange(status: DownloadStatus) {
             when (status) {
@@ -216,12 +218,15 @@ internal class DownloadTask(private val context: Context, private val downloadUr
                 }
 
                 DownloadStatus.DOWNLOADING -> {
+                    val decimalFormat = DecimalFormat(".##")
+                    decimalFormat.roundingMode = RoundingMode.FLOOR
+
                     val sum = subDownLoadTasks.fold(0L) { sum, subDownLoadTask ->
                         sum + subDownLoadTask.completeSize - (subDownLoadTask.startPos ?: 0)
                     }
-                    val currentProgress = (sum * 100 / fileSize).toInt()
+                    val currentProgress = sum * 100f / fileSize
                     if (currentProgress != lastDownloadProgress) {
-                        DownloadManager.downloadStatusChange(downloadStatus = status, progress = currentProgress)
+                        DownloadManager.downloadStatusChange(downloadStatus = status, progress = decimalFormat.format(currentProgress))
                         lastDownloadProgress = currentProgress
                         saveSubDownLoadTasks(needSaveTask)
                     }

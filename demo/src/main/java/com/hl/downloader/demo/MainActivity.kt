@@ -20,7 +20,7 @@ class MainActivity : AppCompatActivity() {
             // String downloadUrl = "https://images.pexels.com/photos/4993088/pexels-photo-4993088.jpeg?cs=srgb&dl=pexels-rachel-claire-4993088.jpg&fm=jpg";
             DownloadManager.startDownLoad(
                 this.application, downloadUrl, object : DownloadListener() {
-                    override fun downloadIng(progress: Int) {
+                    override fun downloadIng(progress: String) {
                         this@MainActivity.displayInfo.text = "下载中$progress%"
                     }
 

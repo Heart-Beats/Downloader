@@ -39,13 +39,13 @@ object DownloadManager {
         downloadTask?.resumeDownLoad()
     }
 
-    internal fun downloadStatusChange(downloadStatus: DownloadStatus, progress: Int? = null) {
+    internal fun downloadStatusChange(downloadStatus: DownloadStatus, progress: String? = null) {
         //将通知发回主线程
         mainScope?.launch {
             Log.d("DownloadManager", "下载状态 == $downloadStatus, 下载进度 == $progress")
             when (downloadStatus) {
                 DownloadStatus.DOWNLOAD_ERROR -> downloadListener?.downloadError()
-                DownloadStatus.DOWNLOADING -> downloadListener?.downloadIng(progress ?: 0)
+                DownloadStatus.DOWNLOADING -> downloadListener?.downloadIng(progress ?: "")
                 DownloadStatus.DOWNLOAD_COMPLETE -> downloadListener?.downloadComplete()
                 DownloadStatus.DOWNLOAD_PAUSE -> downloadListener?.downloadPause()
                 DownloadStatus.DOWNLOAD_CANCEL -> downloadListener?.downloadCancel()
