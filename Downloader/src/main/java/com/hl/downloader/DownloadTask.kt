@@ -209,7 +209,7 @@ internal class DownloadTask(private val context: Context, private val downloadUr
     private inner class DownloadStatusListener(val needSaveTask: Boolean = true) :
             OnDownloadStatusListener {
 
-        private var lastDownloadProgress = -1f
+        private var  lastDownloadProgress = ""
 
         override fun downloadStatusChange(status: DownloadStatus) {
             when (status) {
@@ -220,32 +220,46 @@ internal class DownloadTask(private val context: Context, private val downloadUr
                 }
 
                 DownloadStatus.DOWNLOADING -> {
-                    val decimalFormat = DecimalFormat(".##")
+                    val decimalFormat = DecimalFormat("0.##")
                     decimalFormat.roundingMode = RoundingMode.FLOOR
 
                     val sum = subDownLoadTasks.fold(0L) { sum, subDownLoadTask ->
                         sum + subDownLoadTask.completeSize - (subDownLoadTask.startPos ?: 0)
                     }
-                    val currentProgress = sum * 100f / fileSize
-                    if (currentProgress != lastDownloadProgress) {
-                        DownloadManager.downloadStatusChange(downloadStatus = status, progress = decimalFormat.format(currentProgress))
-                        lastDownloadProgress = currentProgress
-                        saveSubDownLoadTasks(needSaveTask)
+                    val currentProgress = decimalFormat.format(sum * 100f / fileSize)
+                    synchronized(lastDownloadProgress){
+                        if (currentProgress != lastDownloadProgress) {
+                            DownloadManager.downloadStatusChange(downloadStatus = status, progress = currentProgress)
+                            lastDownloadProgress = currentProgress
+                            saveSubDownLoadTasks(needSaveTask)
+                        }
                     }
                 }
 
-                DownloadStatus.DOWNLOAD_COMPLETE, DownloadStatus.DOWNLOAD_PAUSE -> {
+                DownloadStatus.DOWNLOAD_COMPLETE -> {
                     if (subDownLoadTasks.all {
-                                it.downloadStatus == status
-                            }) {
+                            it.downloadStatus == status
+                        }) {
+                        DownloadManager.downloadStatusChange(downloadStatus = status)
+                        saveSubDownLoadTasks(needSaveTask)
+                    }
+                }
+                DownloadStatus.DOWNLOAD_PAUSE -> {
+                    if (subDownLoadTasks.filter {
+                            it.downloadStatus != DownloadStatus.DOWNLOAD_COMPLETE
+                        }.all {
+                            it.downloadStatus == status
+                        }) {
                         DownloadManager.downloadStatusChange(downloadStatus = status)
                         saveSubDownLoadTasks(needSaveTask)
                     }
                 }
                 DownloadStatus.DOWNLOAD_CANCEL -> {
-                    if (subDownLoadTasks.all {
-                                it.downloadStatus == status
-                            }) {
+                    if (subDownLoadTasks.filter {
+                            it.downloadStatus != DownloadStatus.DOWNLOAD_COMPLETE
+                        }.all {
+                            it.downloadStatus == status
+                        }) {
                         DownloadManager.downloadStatusChange(downloadStatus = status)
                         //取消下载时，清空所有任务同时清除缓存的任务列表
                         subDownLoadTasks.clear()

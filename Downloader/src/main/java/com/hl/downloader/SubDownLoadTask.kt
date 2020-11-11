@@ -72,8 +72,8 @@ internal data class SubDownLoadTask(
                     randomAccessFile.write(byteArray, 0, len)
                     downloadStatus = DownloadStatus.DOWNLOADING
                     completeSize += len
-                    downloadStatusListener?.downloadStatusChange(downloadStatus)
                 }
+                downloadStatusListener?.downloadStatusChange(downloadStatus)
 
                 if (completeSize >= body.contentLength() && endPos == null || (endPos != null && completeSize > endPos)) {
                     downloadStatus = DownloadStatus.DOWNLOAD_COMPLETE
@@ -86,6 +86,7 @@ internal data class SubDownLoadTask(
             if (e is SocketException && e.message == "Socket closed") {
                 downloadStatus = DownloadStatus.DOWNLOAD_CANCEL
                 downloadStatusListener?.downloadStatusChange(downloadStatus)
+                downloadStatusListener = null
             } else{
                 downloadStatus = DownloadStatus.DOWNLOAD_PAUSE
                 downloadStatusListener?.downloadStatusChange(downloadStatus)
@@ -98,7 +99,7 @@ internal data class SubDownLoadTask(
     fun downLoadPause() {
         if (downloadStatus != DownloadStatus.DOWNLOAD_COMPLETE) {
             downloadStatus = DownloadStatus.DOWNLOAD_PAUSE
-            downloadStatusListener?.downloadStatusChange(downloadStatus)
+            // downloadStatusListener?.downloadStatusChange(downloadStatus)
         }
     }
 
@@ -125,9 +126,6 @@ internal data class SubDownLoadTask(
     fun downloadCancel() {
         if (requestCall?.isCanceled() != true) {
             requestCall?.cancel()
-            downloadStatus = DownloadStatus.DOWNLOAD_CANCEL
-            downloadStatusListener?.downloadStatusChange(downloadStatus)
-            downloadStatusListener = null
         }
     }
 }

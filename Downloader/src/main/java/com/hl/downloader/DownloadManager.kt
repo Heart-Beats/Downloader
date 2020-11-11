@@ -26,9 +26,6 @@ object DownloadManager {
 
     fun cancelDownload() {
         downloadTask?.cancelDownload()
-        downloadTask = null
-        downloadListener = null
-        mainScope = null
     }
 
     fun pauseDownload() {
@@ -48,7 +45,12 @@ object DownloadManager {
                 DownloadStatus.DOWNLOADING -> downloadListener?.downloadIng(progress ?: "")
                 DownloadStatus.DOWNLOAD_COMPLETE -> downloadListener?.downloadComplete()
                 DownloadStatus.DOWNLOAD_PAUSE -> downloadListener?.downloadPause()
-                DownloadStatus.DOWNLOAD_CANCEL -> downloadListener?.downloadCancel()
+                DownloadStatus.DOWNLOAD_CANCEL -> {
+                    downloadListener?.downloadCancel()
+                    downloadTask = null
+                    downloadListener = null
+                    mainScope = null
+                }
                 else -> {
                 }
             }
