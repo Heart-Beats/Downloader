@@ -35,11 +35,13 @@
 
     ```groovy
     dependencies {
-            implementation 'com.github.Heart-Beats:Downloader:v1.0.0'
+            implementation 'com.github.Heart-Beats:Downloader:Tag'
     }
     ```
 
+    Tag：[![](https://jitpack.io/v/Heart-Beats/Downloader.svg)](https://jitpack.io/#Heart-Beats/Downloader)
 
+    
 
 2. 添加依赖后，您就可以方便地使用 `DownloadManager` 进行下载管理：
 
