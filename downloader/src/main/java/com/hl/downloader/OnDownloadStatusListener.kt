@@ -6,5 +6,5 @@ package com.hl.downloader
  */
 internal interface OnDownloadStatusListener {
 
-    fun downloadStatusChange(status: DownloadStatus)
+    fun downloadStatusChange(status: DownloadStatus, errorReason: String? = null)
 }

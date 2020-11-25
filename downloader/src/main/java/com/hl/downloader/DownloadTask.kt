@@ -88,6 +88,10 @@ internal class DownloadTask(private val context: Context, private val downloadUr
                 else -> {
                     Log.d(TAG, "startDownload: 请求的文件不支持下载， statusCode == $statusCode")
                     downloadListener = null
+                    DownloadManager.downloadStatusChange(
+                        DownloadStatus.DOWNLOAD_ERROR,
+                        errorReason = statusCode.toString()
+                    )
                     return
                 }
             }
@@ -181,8 +185,16 @@ internal class DownloadTask(private val context: Context, private val downloadUr
     }
 
     fun resumeDownLoad() {
+        //所有任务已完成或者本地已下载完成无下载任务时 -----> 下载完成
+        if (subDownLoadTasks.all {
+                it.downloadStatus == DownloadStatus.DOWNLOAD_COMPLETE
+            } || (subDownLoadTasks.isEmpty() && downloadListener != null)) {
+            DownloadManager.downloadStatusChange(downloadStatus = DownloadStatus.DOWNLOAD_COMPLETE)
+            return
+        }
+
         //恢复下载时如果文件不存在或者服务器不支持断点续传 需要重新下载
-        if (!subDownLoadTasks[0].saveFile.exists() || downloadListener?.needSaveTask == false) {
+        if (!getSaveFile().exists() || downloadListener?.needSaveTask == false) {
             startDownload()
             return
         }
@@ -211,10 +223,10 @@ internal class DownloadTask(private val context: Context, private val downloadUr
 
         private var  lastDownloadProgress = ""
 
-        override fun downloadStatusChange(status: DownloadStatus) {
+        override fun downloadStatusChange(status: DownloadStatus, errorReason: String?) {
             when (status) {
                 DownloadStatus.DOWNLOAD_ERROR -> {
-                    DownloadManager.downloadStatusChange(downloadStatus = status)
+                    DownloadManager.downloadStatusChange(downloadStatus = status, errorReason)
                     //下载出错时取消下载
                     cancelDownload()
                 }
@@ -227,7 +239,7 @@ internal class DownloadTask(private val context: Context, private val downloadUr
                         sum + subDownLoadTask.completeSize - (subDownLoadTask.startPos ?: 0)
                     }
                     val currentProgress = decimalFormat.format(sum * 100f / fileSize)
-                    synchronized(lastDownloadProgress){
+                    synchronized(lastDownloadProgress) {
                         if (currentProgress != lastDownloadProgress) {
                             DownloadManager.downloadStatusChange(downloadStatus = status, progress = currentProgress)
                             lastDownloadProgress = currentProgress

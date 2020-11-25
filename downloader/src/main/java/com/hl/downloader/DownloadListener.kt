@@ -9,7 +9,7 @@ open class DownloadListener {
     /**
      * 下载错误
      */
-    open fun downloadError() {}
+    open fun downloadError(errorReason: String?) {}
 
     /**
      * 下载完成

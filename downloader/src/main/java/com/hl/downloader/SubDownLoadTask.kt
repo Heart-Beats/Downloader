@@ -52,7 +52,7 @@ internal data class SubDownLoadTask(
 
     override fun onFailure(call: Call, e: IOException) {
         downloadStatus = DownloadStatus.DOWNLOAD_ERROR
-        downloadStatusListener?.downloadStatusChange(downloadStatus)
+        downloadStatusListener?.downloadStatusChange(downloadStatus, e.stackTraceToString())
     }
 
     override fun onResponse(call: Call, response: Response) {

@@ -24,8 +24,8 @@ class MainActivity : AppCompatActivity() {
                         this@MainActivity.displayInfo.text = "下载中$progress%"
                     }
 
-                    override fun downloadError() {
-                        this@MainActivity.displayInfo.text = "下载出错"
+                    override fun downloadError(errorReason: String?) {
+                        this@MainActivity.displayInfo.text = "下载出错:$errorReason"
                     }
 
                     override fun downloadComplete() {
