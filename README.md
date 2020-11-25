@@ -39,7 +39,7 @@
     }
     ```
 
-    Tag：[![](https://jitpack.io/v/Heart-Beats/Downloader.svg)](https://jitpack.io/#Heart-Beats/Downloader)
+    Tag：[![Release](https://jitpack.io/v/Heart-Beats/Downloader.svg)](https://jitpack.io/#Heart-Beats/Downloader)
 
     
 
