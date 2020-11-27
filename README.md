@@ -39,7 +39,7 @@
     }
     ```
 
-    Tag：[![Release](https://jitpack.io/v/Heart-Beats/Downloader.svg)](https://jitpack.io/#Heart-Beats/Downloader)
+    <center>Tag：<a href ="https://jitpack.io/#Heart-Beats/Downloader"><image src ="https://jitpack.io/v/Heart-Beats/Downloader.svg" alt="Release"/> </a></center>
 
     
 
@@ -90,14 +90,14 @@
 
 
     - `pauseDownload()` ：暂停下载
-
+    
     - `resumeDownLoad`：恢复下载，需在暂停下载之后调用才会有效果
-
+    
     - `cancelDownload`：取消下载，请注意取消后下载会从头开始，但杀死APP重新下载不会
 
 
 
-    通过调用 `DownloadManager` 以上的相关方法，您就已经可以实现简单的下载需求了，下载文件默认保存在：`/storage/emulated/0/Android/data/com.hl.downloader.deomo/files` 目录下，文件名默认以下载地址对应的文件命名，暂未提供修改保存地址和保存文件名的方法。
+    通过调用 `DownloadManager` 以上的相关方法，您就已经可以实现简单的下载需求了，下载文件默认保存在：`/storage/emulated/0/Android/data/App包名/files` 目录下，文件名默认以下载地址对应的文件命名，暂未提供修改保存地址和保存文件名的方法。
 
 
 

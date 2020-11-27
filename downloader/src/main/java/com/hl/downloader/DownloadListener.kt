@@ -8,6 +8,7 @@ open class DownloadListener {
 
     /**
      * 下载错误
+     * @param  errorReason 下载错误原因
      */
     open fun downloadError(errorReason: String?) {}
 
@@ -18,7 +19,7 @@ open class DownloadListener {
 
     /**
      * 下载中
-     * 进度为保留两位小数去除尾数 0 的字符串：如：1.5, 10 , 99.99
+     * @param  progress 进度为保留两位小数去除尾数 0 的字符串：如：1.5, 10 , 99.99
      */
     open fun downloadIng(progress: String) {}
 
