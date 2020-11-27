@@ -35,7 +35,7 @@
 
     ```groovy
     dependencies {
-            implementation 'com.github.Heart-Beats:Downloader:Tag'
+            implementation "com.github.Heart-Beats:Downloader:v$Tag"
     }
     ```
 
