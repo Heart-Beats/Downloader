@@ -14,8 +14,9 @@ open class DownloadListener {
 
     /**
      * 下载完成
+     * @param downLoadFilePath 下载完成的文件路径
      */
-    open fun downloadComplete() {}
+    open fun downloadComplete(downLoadFilePath: String) {}
 
     /**
      * 下载中

@@ -17,10 +17,16 @@ object DownloadManager {
 
     private var mainScope: CoroutineScope? = null
 
-    fun startDownLoad(context: Application, downloadUrl: String, downloadListener: DownloadListener, maxDownloadCore: Int = 5) {
+    fun startDownLoad(
+        context: Application,
+        downloadUrl: String,
+        maxDownloadCore: Int = 5,
+        saveFilePath: String? = null,
+        downloadListener: DownloadListener
+    ) {
         this.downloadListener = downloadListener
         mainScope = MainScope()
-        downloadTask = DownloadTask(context, downloadUrl, maxDownloadCore)
+        downloadTask = DownloadTask(context, downloadUrl, maxDownloadCore, saveFilePath)
         downloadTask?.startDownload()
     }
 
@@ -37,7 +43,10 @@ object DownloadManager {
     }
 
     internal fun downloadStatusChange(
-        downloadStatus: DownloadStatus, errorReason: String? = null, progress: String? = null
+        downloadStatus: DownloadStatus,
+        errorReason: String? = null,
+        progress: String? = null,
+        downloadFilePath: String? = null
     ) {
         //将通知发回主线程
         mainScope?.launch {
@@ -45,7 +54,7 @@ object DownloadManager {
             when (downloadStatus) {
                 DownloadStatus.DOWNLOAD_ERROR -> downloadListener?.downloadError(errorReason)
                 DownloadStatus.DOWNLOADING -> downloadListener?.downloadIng(progress ?: "")
-                DownloadStatus.DOWNLOAD_COMPLETE -> downloadListener?.downloadComplete()
+                DownloadStatus.DOWNLOAD_COMPLETE -> downloadListener?.downloadComplete(downloadFilePath ?: "")
                 DownloadStatus.DOWNLOAD_PAUSE -> downloadListener?.downloadPause()
                 DownloadStatus.DOWNLOAD_CANCEL -> {
                     downloadListener?.downloadCancel()
