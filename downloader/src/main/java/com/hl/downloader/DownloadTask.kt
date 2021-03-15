@@ -22,16 +22,21 @@ import java.text.DecimalFormat
  * @Author  张磊  on  2020/11/04 at 15:03
  * Email: 913305160@qq.com
  */
-internal class DownloadTask(private val context: Context, private val downloadUrl: String, private val maxDownloadCore: Int = 1) {
+internal class DownloadTask(
+    private val context: Context,
+    private val downloadUrl: String,
+    private val maxDownloadCore: Int = 1,
+    private val saveFilePath: String?
+) {
 
     companion object {
         private const val TAG = "DownloadTask"
-        private const val SUB_DOWN_LOAD_TASKS = "下载任务"
     }
 
     private val subDownLoadTasks = mutableListOf<SubDownLoadTask>()
     private var downloadListener: DownloadStatusListener? = DownloadStatusListener()
 
+    private lateinit var saveFile: File
     private var fileSize = 0L
 
     fun startDownload() {
@@ -65,11 +70,14 @@ internal class DownloadTask(private val context: Context, private val downloadUr
         fileSize = contentLength
         Log.d(TAG, "startDownload: fileSize == $fileSize , statusCode = $statusCode")
 
-        val saveFile = getSaveFile()
+        this.saveFile = getSaveFile()
 
         if (saveFile.length() == fileSize) {
             Log.d(TAG, "startDownload: 本地文件已经存在，下载完成！")
-            DownloadManager.downloadStatusChange(downloadStatus = DownloadStatus.DOWNLOAD_COMPLETE)
+            DownloadManager.downloadStatusChange(
+                downloadStatus = DownloadStatus.DOWNLOAD_COMPLETE,
+                downloadFilePath = saveFile.path
+            )
             return
         }
 
@@ -101,29 +109,41 @@ internal class DownloadTask(private val context: Context, private val downloadUr
     }
 
     private fun getSaveFile(): File {
-        val fileName = downloadUrl.split("/").last()
-        val file = context.getExternalFilesDir(null)
-        checkNotNull(file) {
-            "下载文件存放目录为空"
-        }
-        if (file.exists()) {
-            check(file.isDirectory) {
-                file.absolutePath +
-                        " 不是文件夹，无法保存文件"
+        if (saveFilePath == null) {
+            val fileName = downloadUrl.split("/").last()
+            val file = context.getExternalFilesDir(null)
+            checkNotNull(file) {
+                "下载文件存放目录为空"
             }
+            if (file.exists()) {
+                check(file.isDirectory) {
+                    file.absolutePath + " 不是文件夹，无法保存文件"
+                }
+            } else {
+                check(file.mkdirs()) {
+                    "不能创建文件夹: ${file.absolutePath}"
+                }
+            }
+            return File(file, fileName)
         } else {
-            check(file.mkdirs()) {
-                "不能创建文件夹: ${file.absolutePath}"
+            val file = File(saveFilePath)
+
+            if (file.exists()) {
+                check(file.isFile) {
+                    file.absolutePath + " 不是文件路径，无法下载"
+                }
             }
+            return file
         }
-        return File(file, fileName)
     }
 
     private fun existTask(): Boolean {
-        val subDownLoadTasksString = getSharedPreferences().getString(SUB_DOWN_LOAD_TASKS, "")
+        val subDownLoadTasksString = getSharedPreferences().getString(createSubDownLoadTaskKey(), "")
         val subDownLoadTasks = gsonParseJson2List<SubDownLoadTask>(subDownLoadTasksString)
         Log.d(TAG, "existTask: 保存的下载task == $subDownLoadTasks")
-        return if (subDownLoadTasks?.isNotEmpty() == true && subDownLoadTasks[0].downLoadUrl == downloadUrl) {
+
+        val firstTask = subDownLoadTasks?.firstOrNull()
+        return if (subDownLoadTasks?.isNotEmpty() == true && firstTask?.downLoadUrl == downloadUrl) {
             this.subDownLoadTasks.clear()
             //如果保存的下载任务不为空，同时下载地址与此次任务相同时 ======》 任务已存在, 添加下载未完成的任务 ----> 添加任务列表
             this.subDownLoadTasks.addAll(subDownLoadTasks.filter {
@@ -169,7 +189,7 @@ internal class DownloadTask(private val context: Context, private val downloadUr
 
     private fun startAsyncDownload() {
         if (subDownLoadTasks.all { it.downloadStatus == DownloadStatus.DOWNLOAD_COMPLETE }) {
-            DownloadManager.downloadStatusChange(DownloadStatus.DOWNLOAD_COMPLETE)
+            DownloadManager.downloadStatusChange(DownloadStatus.DOWNLOAD_COMPLETE, downloadFilePath = saveFile.path)
             return
         }
 
@@ -189,12 +209,14 @@ internal class DownloadTask(private val context: Context, private val downloadUr
         if (subDownLoadTasks.all {
                 it.downloadStatus == DownloadStatus.DOWNLOAD_COMPLETE
             } || (subDownLoadTasks.isEmpty() && downloadListener != null)) {
-            DownloadManager.downloadStatusChange(downloadStatus = DownloadStatus.DOWNLOAD_COMPLETE)
+            DownloadManager.downloadStatusChange(
+                downloadStatus = DownloadStatus.DOWNLOAD_COMPLETE, downloadFilePath = saveFile.path
+            )
             return
         }
 
         //恢复下载时如果文件不存在或者服务器不支持断点续传 需要重新下载
-        if (!getSaveFile().exists() || downloadListener?.needSaveTask == false) {
+        if (!saveFile.exists() || downloadListener?.needSaveTask == false) {
             startDownload()
             return
         }
@@ -252,7 +274,7 @@ internal class DownloadTask(private val context: Context, private val downloadUr
                     if (subDownLoadTasks.all {
                             it.downloadStatus == status
                         }) {
-                        DownloadManager.downloadStatusChange(downloadStatus = status)
+                        DownloadManager.downloadStatusChange(downloadStatus = status, downloadFilePath = saveFile.path)
                         saveSubDownLoadTasks(needSaveTask)
                     }
                 }
@@ -292,11 +314,14 @@ internal class DownloadTask(private val context: Context, private val downloadUr
         getSharedPreferences().edit {
             if (needSaveTask) {
                 //使用自定义的序列化器创建 Gson 对象
-                val gson = GsonBuilder().registerTypeAdapter(SubDownLoadTask::class.java, SubDownLoadTaskSerializer()).create()
-                this.putString(SUB_DOWN_LOAD_TASKS, gson.toJson(subDownLoadTasks))
+                val gson =
+                    GsonBuilder().registerTypeAdapter(SubDownLoadTask::class.java, SubDownLoadTaskSerializer()).create()
+                this.putString(createSubDownLoadTaskKey(), gson.toJson(subDownLoadTasks))
             } else {
-                this.putString(SUB_DOWN_LOAD_TASKS, "")
+                this.putString(createSubDownLoadTaskKey(), "")
             }
         }
     }
+
+    private fun createSubDownLoadTaskKey() = "$downloadUrl&${saveFile.path}"
 }
