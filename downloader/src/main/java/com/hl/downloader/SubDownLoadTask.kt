@@ -52,13 +52,13 @@ internal data class SubDownLoadTask(
 
     override fun onFailure(call: Call, e: IOException) {
         downloadStatus = DownloadStatus.DOWNLOAD_ERROR
-        downloadStatusListener?.downloadStatusChange(downloadStatus, e.stackTraceToString())
+        downloadStatusListener?.downloadStatusChange(downloadStatus, e)
     }
 
     override fun onResponse(call: Call, response: Response) {
         val body = response.body
         val randomAccessFile = RandomAccessFile(saveFile, "rwd")
-        //randomAccessFile.seek(pos): pos 代表要跳过的字节数，若为 0 则表示未见开头
+        //randomAccessFile.seek(pos): pos 代表要跳过的字节数，若为 0 则表示文件开头
         randomAccessFile.seek(completeSize)
 
         val byteArray = ByteArray(1024 * 1024)
@@ -99,7 +99,6 @@ internal data class SubDownLoadTask(
     fun downLoadPause() {
         if (downloadStatus != DownloadStatus.DOWNLOAD_COMPLETE) {
             downloadStatus = DownloadStatus.DOWNLOAD_PAUSE
-            // downloadStatusListener?.downloadStatusChange(downloadStatus)
         }
     }
 
@@ -109,11 +108,14 @@ internal data class SubDownLoadTask(
             downloadStatusListener?.downloadStatusChange(downloadStatus)
 
             //短时快速发起请求可能导致三次握手之后客户TCP的请求已关闭，产生 ECONNABORTED错误，需要对此情况处理
-            val myCoroutineExceptionHandler = MyCoroutineExceptionHandler(delayTimeMills = 5 * 1000) {
-                MainScope().launch(it) {
-                    startRequest()
-                }
-            }
+            val myCoroutineExceptionHandler = MyCoroutineExceptionHandler(errorPrint = {
+                DownloadManager.downloadStatusChange(
+                    downloadStatus = DownloadStatus.DOWNLOAD_ERROR,
+                    error = it
+                )
+            }, retryAction = {
+                startRequest()
+            })
 
             MainScope().launch(myCoroutineExceptionHandler) {
                 //延迟500ms, 确保网络改变唤醒生效
@@ -127,5 +129,8 @@ internal data class SubDownLoadTask(
         if (requestCall?.isCanceled() != true) {
             requestCall?.cancel()
         }
+
+        downloadStatus = DownloadStatus.DOWNLOAD_CANCEL
+        downloadStatusListener?.downloadStatusChange(downloadStatus)
     }
 }

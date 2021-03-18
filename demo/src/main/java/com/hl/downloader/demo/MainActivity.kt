@@ -51,13 +51,15 @@ class MainActivity : AppCompatActivity() {
         val saveFilePath = "$externalFilesDir/测试.apk"
 
         DownloadManager.startDownLoad(
-            this.application, downloadUrl, object : DownloadListener() {
+            this.application, downloadUrl,
+            saveFilePath = saveFilePath,
+            downloadListener = object : DownloadListener() {
                 override fun downloadIng(progress: String) {
                     this@MainActivity.displayInfo.text = "下载中$progress%"
                 }
 
-                override fun downloadError(errorReason: String?) {
-                    this@MainActivity.displayInfo.text = "下载出错:$errorReason"
+                override fun downloadError(error: Throwable?) {
+                    this@MainActivity.displayInfo.text = "下载出错:${error?.message}"
                 }
 
                 override fun downloadComplete(downLoadFilePath: String) {
@@ -71,7 +73,7 @@ class MainActivity : AppCompatActivity() {
                 override fun downloadCancel() {
                     this@MainActivity.displayInfo.text = "下载取消"
                 }
-            }, maxDownloadCore = 3, saveFilePath = saveFilePath
+            }
         )
     }
 

@@ -2,6 +2,7 @@ package com.hl.downloader
 
 import android.app.Application
 import android.util.Log
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -20,13 +21,14 @@ object DownloadManager {
     fun startDownLoad(
         context: Application,
         downloadUrl: String,
-        downloadListener: DownloadListener,
         maxDownloadCore: Int = 5,
         saveFilePath: String? = null,
+        exceptionHandler: CoroutineExceptionHandler? = null,
+        downloadListener: DownloadListener
     ) {
         this.downloadListener = downloadListener
         mainScope = MainScope()
-        downloadTask = DownloadTask(context, downloadUrl, maxDownloadCore, saveFilePath)
+        downloadTask = DownloadTask(context, downloadUrl, maxDownloadCore, saveFilePath, exceptionHandler)
         downloadTask?.startDownload()
     }
 
@@ -44,7 +46,7 @@ object DownloadManager {
 
     internal fun downloadStatusChange(
         downloadStatus: DownloadStatus,
-        errorReason: String? = null,
+        error: Throwable? = null,
         progress: String? = null,
         downloadFilePath: String? = null
     ) {
@@ -52,7 +54,7 @@ object DownloadManager {
         mainScope?.launch {
             Log.d("DownloadManager", "下载状态 == $downloadStatus, 下载进度 == $progress")
             when (downloadStatus) {
-                DownloadStatus.DOWNLOAD_ERROR -> downloadListener?.downloadError(errorReason)
+                DownloadStatus.DOWNLOAD_ERROR -> downloadListener?.downloadError(error)
                 DownloadStatus.DOWNLOADING -> downloadListener?.downloadIng(progress ?: "")
                 DownloadStatus.DOWNLOAD_COMPLETE -> downloadListener?.downloadComplete(downloadFilePath ?: "")
                 DownloadStatus.DOWNLOAD_PAUSE -> downloadListener?.downloadPause()

@@ -7,10 +7,7 @@ import android.util.Patterns
 import androidx.core.content.edit
 import com.google.gson.GsonBuilder
 import com.hl.downloader.utils.gsonParseJson2List
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -26,7 +23,8 @@ internal class DownloadTask(
     private val context: Context,
     private val downloadUrl: String,
     private val maxDownloadCore: Int = 1,
-    private val saveFilePath: String?
+    private val saveFilePath: String?,
+    private val exceptionHandler: CoroutineExceptionHandler? = null
 ) {
 
     companion object {
@@ -38,19 +36,26 @@ internal class DownloadTask(
 
     private lateinit var saveFile: File
     private var fileSize = 0L
+    private var isCanceled = false
 
     fun startDownload() {
         if (!Patterns.WEB_URL.matcher(downloadUrl).matches()) {
             Log.d(TAG, "startDownload: 下载地址错误（${downloadUrl}），请检查后再尝试！")
+
+            downloadListener?.downloadStatusChange(DownloadStatus.DOWNLOAD_ERROR, error = Exception("下载地址错误"))
             return
         }
 
         //短时快速发起请求可能导致三次握手之后客户TCP的请求已关闭，产生 ECONNABORTED错误，需要对此情况处理
-        val myCoroutineExceptionHandler = MyCoroutineExceptionHandler(delayTimeMills = 5 * 1000) {
-            MainScope().launch(it) {
+        val myCoroutineExceptionHandler = exceptionHandler ?: MyCoroutineExceptionHandler(errorPrint = {
+            if (!isCanceled) {
+                downloadListener?.downloadStatusChange(DownloadStatus.DOWNLOAD_ERROR, it)
+            }
+        }, retryAction = {
+            if (!isCanceled) {
                 startRequestDownload()
             }
-        }
+        })
 
         MainScope().launch(myCoroutineExceptionHandler) {
             startRequestDownload()
@@ -58,6 +63,8 @@ internal class DownloadTask(
     }
 
     private suspend fun startRequestDownload() {
+        isCanceled = false
+
         val okHttpClient = OkHttpClient()
         val requestBuilder = Request.Builder().url(downloadUrl)
         requestBuilder.addHeader("RANGE", "bytes=0-")
@@ -94,11 +101,12 @@ internal class DownloadTask(
                     downloadListener = DownloadStatusListener(false)
                 }
                 else -> {
-                    Log.d(TAG, "startDownload: 请求的文件不支持下载， statusCode == $statusCode")
+                    val errorReason = "请求的文件不支持下载， statusCode == $statusCode"
+                    Log.d(TAG, "startDownload: $errorReason")
                     downloadListener = null
                     DownloadManager.downloadStatusChange(
                         DownloadStatus.DOWNLOAD_ERROR,
-                        errorReason = statusCode.toString()
+                        error = Exception(errorReason)
                     )
                     return
                 }
@@ -199,12 +207,16 @@ internal class DownloadTask(
     }
 
     fun pauseDownLoad() {
+        isCanceled = false
+
         subDownLoadTasks.filterAndOperateEach({ this.downloadStatus != DownloadStatus.DOWNLOAD_PAUSE }) {
             it.downLoadPause()
         }
     }
 
     fun resumeDownLoad() {
+        isCanceled = false
+
         //所有任务已完成或者本地已下载完成无下载任务时 -----> 下载完成
         if (subDownLoadTasks.all {
                 it.downloadStatus == DownloadStatus.DOWNLOAD_COMPLETE
@@ -227,6 +239,12 @@ internal class DownloadTask(
     }
 
     fun cancelDownload() {
+        isCanceled = true
+
+        if (subDownLoadTasks.isEmpty() || subDownLoadTasks.all { it.downloadStatus == DownloadStatus.DOWNLOAD_CANCEL }) {
+            DownloadManager.downloadStatusChange(downloadStatus = DownloadStatus.DOWNLOAD_CANCEL)
+        }
+
         subDownLoadTasks.filterAndOperateEach({ this.downloadStatus != DownloadStatus.DOWNLOAD_CANCEL }) {
             it.downloadCancel()
         }
@@ -245,12 +263,10 @@ internal class DownloadTask(
 
         private var  lastDownloadProgress = ""
 
-        override fun downloadStatusChange(status: DownloadStatus, errorReason: String?) {
+        override fun downloadStatusChange(status: DownloadStatus, error: Throwable?) {
             when (status) {
                 DownloadStatus.DOWNLOAD_ERROR -> {
-                    DownloadManager.downloadStatusChange(downloadStatus = status, errorReason)
-                    //下载出错时取消下载
-                    cancelDownload()
+                    DownloadManager.downloadStatusChange(status, error)
                 }
 
                 DownloadStatus.DOWNLOADING -> {

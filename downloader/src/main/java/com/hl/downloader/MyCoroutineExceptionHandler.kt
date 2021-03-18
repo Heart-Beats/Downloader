@@ -14,13 +14,20 @@ import kotlin.coroutines.CoroutineContext
  */
 
 /**
- * 捕获协程的异常，并定义重新请求的次数、延迟时间和动作
+ * 捕获协程的异常，并定义重新执行的次数、延迟时间和执行的动作
+ *
+ * @param allowRetryNum   重新尝试的次数(默认：5次)
+ * @param delayTimeMills  每次重新尝试的延迟时间（默认：5000 ms）
+ * @param errorPrint      回调即时抛出错误
+ * @param retryAction     出错时执行的操作
+ *
  * @see CoroutineExceptionHandler
  */
 class MyCoroutineExceptionHandler(
     val allowRetryNum: Int = 5,
-    val delayTimeMills: Long = 0,
-    val retryAction: (CoroutineExceptionHandler) -> Unit = {}
+    val delayTimeMills: Long = 5 * 1000,
+    val errorPrint: (Throwable) -> Unit = {},
+    val retryAction: suspend () -> Unit = {}
 ) : AbstractCoroutineContextElement(CoroutineExceptionHandler), CoroutineExceptionHandler {
 
     companion object {
@@ -37,11 +44,12 @@ class MyCoroutineExceptionHandler(
 
     override fun handleException(context: CoroutineContext, exception: Throwable) {
         Log.e(TAG, "运行异常", exception)
-        MainScope().launch {
+        MainScope().launch(this) {
             if (currentRetryNum++ < allowRetryNum) {
-                //延迟执行，默认无延迟
+                errorPrint(exception)
+                //延迟执行
                 delay(delayTimeMills)
-                retryAction(this@MyCoroutineExceptionHandler)
+                retryAction()
             }
         }
     }

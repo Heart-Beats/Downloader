@@ -8,9 +8,9 @@ open class DownloadListener {
 
     /**
      * 下载错误
-     * @param  errorReason 下载错误原因
+     * @param  error 下载异常
      */
-    open fun downloadError(errorReason: String?) {}
+    open fun downloadError(error: Throwable?) {}
 
     /**
      * 下载完成
