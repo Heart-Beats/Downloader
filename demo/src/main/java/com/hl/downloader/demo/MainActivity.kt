@@ -4,18 +4,27 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Environment
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.MutableLiveData
 import com.hl.downloader.DownloadListener
 import com.hl.downloader.DownloadManager
+import com.hl.downloader.DownloadStatus
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
 
     private companion object {
         const val REQUEST_PERMISSIONS_CODE = 0x0001
+    }
+
+    private val downloadStatus by lazy {
+        MutableLiveData<DownloadStatus>().apply {
+            value = DownloadStatus.READY_TO_DOWNLOAD
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,6 +52,29 @@ class MainActivity : AppCompatActivity() {
             DownloadManager.cancelDownload()
             true
         }
+
+        downloadStatus.observe(this) {
+            when (downloadStatus.value) {
+                DownloadStatus.DOWNLOADING -> {
+                    pause_resume_down.visibility = View.VISIBLE
+                    pause_resume_down.text = "暂停下载"
+                    pause_resume_down.setOnClickListener {
+                        println("开始暂停下载")
+                        DownloadManager.pauseDownload()
+                    }
+                }
+                DownloadStatus.DOWNLOAD_PAUSE -> {
+                    pause_resume_down.visibility = View.VISIBLE
+                    pause_resume_down.text = "继续下载"
+                    pause_resume_down.setOnClickListener {
+                        DownloadManager.resumeDownLoad()
+                    }
+                }
+                else -> {
+                    pause_resume_down.visibility = View.GONE
+                }
+            }
+        }
     }
 
     private fun startDownloadTest() {
@@ -56,22 +88,32 @@ class MainActivity : AppCompatActivity() {
             downloadListener = object : DownloadListener() {
                 override fun downloadIng(progress: String) {
                     this@MainActivity.displayInfo.text = "下载中$progress%"
+
+                    downloadStatus.value = DownloadStatus.DOWNLOADING
                 }
 
                 override fun downloadError(error: Throwable?) {
                     this@MainActivity.displayInfo.text = "下载出错:${error?.message}"
+
+                    downloadStatus.value = DownloadStatus.DOWNLOAD_ERROR
                 }
 
                 override fun downloadComplete(downLoadFilePath: String) {
                     this@MainActivity.displayInfo.text = "下载完成--->$downLoadFilePath"
+
+                    downloadStatus.value = DownloadStatus.DOWNLOAD_COMPLETE
                 }
 
                 override fun downloadPause() {
                     this@MainActivity.displayInfo.text = "下载暂停"
+
+                    downloadStatus.value = DownloadStatus.DOWNLOAD_PAUSE
                 }
 
                 override fun downloadCancel() {
                     this@MainActivity.displayInfo.text = "下载取消"
+
+                    downloadStatus.value = DownloadStatus.DOWNLOAD_CANCEL
                 }
             }
         )

@@ -248,6 +248,10 @@ internal class DownloadTask(
         subDownLoadTasks.filterAndOperateEach({ this.downloadStatus != DownloadStatus.DOWNLOAD_CANCEL }) {
             it.downloadCancel()
         }
+
+        if (::saveFile.isInitialized && saveFile.exists()) {
+            saveFile.delete() // 取消下载时删除下载文件
+        }
     }
 
     private inline fun <T, R> List<T>.filterAndOperateEach(filter: T.() -> Boolean, action: (T) -> R): R? {
