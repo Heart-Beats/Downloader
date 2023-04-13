@@ -78,9 +78,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startDownloadTest() {
-        val downloadUrl = "http://down.qq.com/qqweb/QQ_1/android_apk/Androidqq_8.4.10.4875_537065980.apk"
+        val downloadUrl = "https://downv6.qq.com/qqweb/QQ_1/android_apk/Android_8.9.38.10545_537154734_64.apk"
         val externalFilesDir = this.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-        val saveFilePath = "$externalFilesDir/测试.apk"
+        val saveFilePath = "$externalFilesDir/QQ.apk"
 
         DownloadManager.startDownLoad(
             this.application, downloadUrl,
@@ -120,6 +120,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_PERMISSIONS_CODE) {
             val noGrantResult = grantResults.filter { it != PackageManager.PERMISSION_GRANTED }
             if (noGrantResult.isEmpty()) {

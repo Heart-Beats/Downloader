@@ -13,6 +13,8 @@ import kotlinx.coroutines.launch
  */
 object DownloadManager {
 
+    private val TAG = Constants.BASE_TAG + this.javaClass.simpleName
+
     private var downloadListener: DownloadListener? = null
     private var downloadTask: DownloadTask? = null
 
@@ -52,7 +54,7 @@ object DownloadManager {
     ) {
         //将通知发回主线程
         mainScope?.launch {
-            Log.d("DownloadManager", "下载状态 == $downloadStatus, 下载进度 == $progress")
+            Log.d(TAG, "下载状态 == $downloadStatus, 下载进度 == $progress")
             when (downloadStatus) {
                 DownloadStatus.DOWNLOAD_ERROR -> downloadListener?.downloadError(error)
                 DownloadStatus.DOWNLOADING -> downloadListener?.downloadIng(progress ?: "")

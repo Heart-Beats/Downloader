@@ -5,8 +5,8 @@ import android.content.SharedPreferences
 import android.util.Log
 import android.util.Patterns
 import androidx.core.content.edit
-import com.google.gson.GsonBuilder
-import com.hl.downloader.utils.gsonParseJson2List
+import com.hl.downloader.bean.SubDownloadTaskBean
+import com.hl.downloader.utils.GsonUtil
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -27,11 +27,9 @@ internal class DownloadTask(
     private val exceptionHandler: CoroutineExceptionHandler? = null
 ) {
 
-    companion object {
-        private const val TAG = "DownloadTask"
-    }
+    private val TAG = Constants.BASE_TAG + this.javaClass.simpleName
 
-    private val subDownLoadTasks = mutableListOf<SubDownLoadTask>()
+    private val subDownloadTasks = mutableListOf<SubDownloadTask>()
     private var downloadListener: DownloadStatusListener? = DownloadStatusListener()
 
     private lateinit var saveFile: File
@@ -79,7 +77,7 @@ internal class DownloadTask(
 
         this.saveFile = getSaveFile()
 
-        if (saveFile.length() == fileSize) {
+        if (saveFile.exists() && saveFile.length() == fileSize) {
             Log.d(TAG, "startDownload: 本地文件已经存在，下载完成！")
             DownloadManager.downloadStatusChange(
                 downloadStatus = DownloadStatus.DOWNLOAD_COMPLETE,
@@ -146,15 +144,18 @@ internal class DownloadTask(
     }
 
     private fun existTask(): Boolean {
-        val subDownLoadTasksString = getSharedPreferences().getString(createSubDownLoadTaskKey(), "")
-        val subDownLoadTasks = gsonParseJson2List<SubDownLoadTask>(subDownLoadTasksString)
-        Log.d(TAG, "existTask: 保存的下载task == $subDownLoadTasks")
+        val subDownLoadTaskBeansString = getSharedPreferences().getString(createSubDownLoadTaskKey(), "")
 
-        val firstTask = subDownLoadTasks?.firstOrNull()
-        return if (subDownLoadTasks?.isNotEmpty() == true && firstTask?.downLoadUrl == downloadUrl) {
-            this.subDownLoadTasks.clear()
+        val subDownloadTasks = GsonUtil.fromJson<List<SubDownloadTaskBean>>(subDownLoadTaskBeansString)?.map {
+            SubDownloadTask(it)
+        }
+        Log.d(TAG, "existTask: 保存的下载task == $subDownloadTasks")
+
+        val firstTask = subDownloadTasks?.firstOrNull()
+        return if (subDownloadTasks?.isNotEmpty() === true && firstTask?.subDownloadTaskBean?.downLoadUrl == downloadUrl) {
+            this.subDownloadTasks.clear()
             //如果保存的下载任务不为空，同时下载地址与此次任务相同时 ======》 任务已存在, 添加下载未完成的任务 ----> 添加任务列表
-            this.subDownLoadTasks.addAll(subDownLoadTasks.filter {
+            this.subDownloadTasks.addAll(subDownloadTasks.filter {
                 it.downloadStatus != DownloadStatus.DOWNLOAD_COMPLETE
             })
             true
@@ -174,15 +175,16 @@ internal class DownloadTask(
             partSizeList.add(partSize)
         }
 
-        subDownLoadTasks.clear()
+        subDownloadTasks.clear()
         partSizeList.forEachIndexed { index, _ ->
             //开始位置：自身在分配大小list 位置的前面所有项和（不包括自身）， 如： [2,1,1] ==》 [0,2,3]
             val startPos = partSizeList.take(index).reduceOrNull { sum, size -> sum + size } ?: 0
             //结束位置：自身在分配大小list 位置的前面所有项和-1（包括自身）， 如： [2,1,1] ==》 [1,2,3]
             val endPos = partSizeList.take(index + 1).reduce { sum, size -> sum + size } - 1
 
-            val subDownLoadTask = SubDownLoadTask(downloadUrl, startPos = startPos, endPos = endPos, saveFile = file)
-            subDownLoadTasks.add(subDownLoadTask)
+            val subDownLoadTask =
+                SubDownloadTask(SubDownloadTaskBean(downloadUrl, startPos = startPos, endPos = endPos, saveFile = file))
+            subDownloadTasks.add(subDownLoadTask)
         }
     }
 
@@ -190,18 +192,18 @@ internal class DownloadTask(
      * 服务器不支持断点续传，创建单线程下载任务
      */
     private fun initSubTask(file: File) {
-        val subDownLoadTask = SubDownLoadTask(downloadUrl, saveFile = file)
-        subDownLoadTasks.clear()
-        subDownLoadTasks.add(subDownLoadTask)
+        val subDownLoadTask = SubDownloadTask(SubDownloadTaskBean(downloadUrl, saveFile = file))
+        subDownloadTasks.clear()
+        subDownloadTasks.add(subDownLoadTask)
     }
 
     private fun startAsyncDownload() {
-        if (subDownLoadTasks.all { it.downloadStatus == DownloadStatus.DOWNLOAD_COMPLETE }) {
+        if (subDownloadTasks.all { it.downloadStatus == DownloadStatus.DOWNLOAD_COMPLETE }) {
             DownloadManager.downloadStatusChange(DownloadStatus.DOWNLOAD_COMPLETE, downloadFilePath = saveFile.path)
             return
         }
 
-        subDownLoadTasks.filterAndOperateEach({ this.downloadStatus != DownloadStatus.DOWNLOAD_COMPLETE }) {
+        subDownloadTasks.filterAndOperateEach({ this.downloadStatus != DownloadStatus.DOWNLOAD_COMPLETE }) {
             it.startDownLoad(downloadListener)
         }
     }
@@ -209,7 +211,7 @@ internal class DownloadTask(
     fun pauseDownLoad() {
         isCanceled = false
 
-        subDownLoadTasks.filterAndOperateEach({ this.downloadStatus != DownloadStatus.DOWNLOAD_PAUSE }) {
+        subDownloadTasks.filterAndOperateEach({ this.downloadStatus != DownloadStatus.DOWNLOAD_PAUSE }) {
             it.downLoadPause()
         }
     }
@@ -218,9 +220,9 @@ internal class DownloadTask(
         isCanceled = false
 
         //所有任务已完成或者本地已下载完成无下载任务时 -----> 下载完成
-        if (subDownLoadTasks.all {
+        if (subDownloadTasks.all {
                 it.downloadStatus == DownloadStatus.DOWNLOAD_COMPLETE
-            } || (subDownLoadTasks.isEmpty() && downloadListener != null)) {
+            } || (subDownloadTasks.isEmpty() && downloadListener != null)) {
             DownloadManager.downloadStatusChange(
                 downloadStatus = DownloadStatus.DOWNLOAD_COMPLETE, downloadFilePath = saveFile.path
             )
@@ -233,7 +235,7 @@ internal class DownloadTask(
             return
         }
 
-        subDownLoadTasks.filterAndOperateEach({ this.downloadStatus == DownloadStatus.DOWNLOAD_PAUSE }) {
+        subDownloadTasks.filterAndOperateEach({ this.downloadStatus == DownloadStatus.DOWNLOAD_PAUSE }) {
             it.downLoadResume()
         }
     }
@@ -241,11 +243,11 @@ internal class DownloadTask(
     fun cancelDownload() {
         isCanceled = true
 
-        if (subDownLoadTasks.isEmpty() || subDownLoadTasks.all { it.downloadStatus == DownloadStatus.DOWNLOAD_CANCEL }) {
+        if (subDownloadTasks.isEmpty() || subDownloadTasks.all { it.downloadStatus == DownloadStatus.DOWNLOAD_CANCEL }) {
             DownloadManager.downloadStatusChange(downloadStatus = DownloadStatus.DOWNLOAD_CANCEL)
         }
 
-        subDownLoadTasks.filterAndOperateEach({ this.downloadStatus != DownloadStatus.DOWNLOAD_CANCEL }) {
+        subDownloadTasks.filterAndOperateEach({ this.downloadStatus != DownloadStatus.DOWNLOAD_CANCEL }) {
             it.downloadCancel()
         }
 
@@ -277,8 +279,9 @@ internal class DownloadTask(
                     val decimalFormat = DecimalFormat("0.##")
                     decimalFormat.roundingMode = RoundingMode.FLOOR
 
-                    val sum = subDownLoadTasks.fold(0L) { sum, subDownLoadTask ->
-                        sum + subDownLoadTask.completeSize - (subDownLoadTask.startPos ?: 0)
+                    val sum = subDownloadTasks.fold(0L) { sum, subDownLoadTask ->
+                        sum + subDownLoadTask.subDownloadTaskBean.completeSize - (subDownLoadTask.subDownloadTaskBean.startPos
+                            ?: 0)
                     }
                     val currentProgress = decimalFormat.format(sum * 100f / fileSize)
                     synchronized(lastDownloadProgress) {
@@ -291,15 +294,13 @@ internal class DownloadTask(
                 }
 
                 DownloadStatus.DOWNLOAD_COMPLETE -> {
-                    if (subDownLoadTasks.all {
-                            it.downloadStatus == status
-                        }) {
+                    if (subDownloadTasks.all { it.downloadStatus == status }) {
                         DownloadManager.downloadStatusChange(downloadStatus = status, downloadFilePath = saveFile.path)
                         saveSubDownLoadTasks(needSaveTask)
                     }
                 }
                 DownloadStatus.DOWNLOAD_PAUSE -> {
-                    if (subDownLoadTasks.filter {
+                    if (subDownloadTasks.filter {
                             it.downloadStatus != DownloadStatus.DOWNLOAD_COMPLETE
                         }.all {
                             it.downloadStatus == status
@@ -309,14 +310,14 @@ internal class DownloadTask(
                     }
                 }
                 DownloadStatus.DOWNLOAD_CANCEL -> {
-                    if (subDownLoadTasks.filter {
+                    if (subDownloadTasks.filter {
                             it.downloadStatus != DownloadStatus.DOWNLOAD_COMPLETE
                         }.all {
                             it.downloadStatus == status
                         }) {
                         DownloadManager.downloadStatusChange(downloadStatus = status)
                         //取消下载时，清空所有任务同时清除缓存的任务列表
-                        subDownLoadTasks.clear()
+                        subDownloadTasks.clear()
                         saveSubDownLoadTasks(needSaveTask)
                     }
                 }
@@ -333,10 +334,11 @@ internal class DownloadTask(
     private fun saveSubDownLoadTasks(needSaveTask: Boolean) {
         getSharedPreferences().edit {
             if (needSaveTask) {
-                //使用自定义的序列化器创建 Gson 对象
-                val gson =
-                    GsonBuilder().registerTypeAdapter(SubDownLoadTask::class.java, SubDownLoadTaskSerializer()).create()
-                this.putString(createSubDownLoadTaskKey(), gson.toJson(subDownLoadTasks))
+                this.putString(
+                    createSubDownLoadTaskKey(),
+                    // 保存下载任务数据
+                    GsonUtil.toJson(subDownloadTasks.map { it.subDownloadTaskBean })
+                )
             } else {
                 this.putString(createSubDownLoadTaskKey(), "")
             }

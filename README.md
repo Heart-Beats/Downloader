@@ -49,7 +49,7 @@
 
     - `startDownLoad(context: Application, downloadUrl: String, maxDownloadCore: Int = 5, saveFilePath: String? = null,  exceptionHandler: CoroutineExceptionHandler? = null, downloadListener: DownloadListener)`  ：开始下载
 
-          
+        ​    
 
         其中 `downloadUrl` 为下载链接地址，`maxDownloadCore` 为最大支持下载线程数， `saveFilePath` 为自定义的下载存储路径， `exceptionHandler` 为异常处理器，可参见 `MyCoroutineExceptionHandler` ，其主要默认实现了出错时重试次数以及重试的操作和延迟。
 
@@ -89,7 +89,7 @@
              * 注意：当前下载已完成或已取消，请求取消不会受到此通知
              */
             open fun downloadCancel() {}
-    }
+        }
         ```
 
     - `pauseDownload()` ：暂停下载
@@ -99,7 +99,7 @@
     - `cancelDownload`：取消下载，请注意取消后下载会从头开始，但杀死APP重新下载不会
 
         
-
+    
     通过调用 `DownloadManager` 以上的相关方法，您就已经可以实现简单的下载需求了，下载文件默认保存在：`/storage/emulated/0/Android/data/App包名/files` 目录下，文件名默认以下载地址对应的文件命名，当然您也可以通过传入 `saveFilePath` 来自定义下载路径和文件名。
     
     在使用本工具的过程中，您可能需要注意授予存储权限以及 Android 10 以上的分区存储，否则您自定义的下载路径可能会出错。

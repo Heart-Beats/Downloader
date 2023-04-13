@@ -30,9 +30,9 @@ class MyCoroutineExceptionHandler(
     val retryAction: suspend () -> Unit = {}
 ) : AbstractCoroutineContextElement(CoroutineExceptionHandler), CoroutineExceptionHandler {
 
-    companion object {
-        private const val TAG = "MyCoroutineExceptionHan"
+    private val TAG = Constants.BASE_TAG + this.javaClass.simpleName
 
+    companion object {
         private var currentRetryNum = 0
     }
 
