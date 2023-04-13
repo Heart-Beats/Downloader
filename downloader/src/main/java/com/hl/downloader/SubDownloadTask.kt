@@ -84,7 +84,8 @@ import java.util.concurrent.TimeUnit
          //randomAccessFile.seek(pos): pos 代表要跳过的字节数，若为 0 则表示文件开头
          randomAccessFile.seek(completeSize)
 
-         val byteArray = ByteArray(1024 * 1024)
+         // 设置大小 8K
+         val byteArray = ByteArray(8 * 1024)
 
          var len: Int
          val inputStream = body?.byteStream() ?: return
@@ -94,8 +95,8 @@ import java.util.concurrent.TimeUnit
                  if (downloadStatus == DownloadStatus.DOWNLOAD_PAUSE) {
                      downloadStatusListener?.downloadStatusChange(downloadStatus)
 
-                     // 下载暂停时取消下载
-                     Log.e(TAG, "onResponse: 取消下载 ----> $this")
+                     // 下载暂停时跳出循环，停止写流到文件
+                     Log.e(TAG, "onResponse: 暂停下载 ----> $this")
                      break
                  } else {
                      randomAccessFile.write(byteArray, 0, len)

@@ -37,6 +37,15 @@ internal class DownloadTask(
     private var isCanceled = false
 
     fun startDownload() {
+        val isDownloading = subDownloadTasks.any {
+            it.downloadStatus == DownloadStatus.DOWNLOADING
+                    || it.downloadStatus == DownloadStatus.DOWNLOAD_PAUSE
+        }
+        if (isDownloading) {
+            Log.d(TAG, "startDownload: 已在下载或暂停下载中，忽略此次下载请求")
+            return
+        }
+
         if (!Patterns.WEB_URL.matcher(downloadUrl).matches()) {
             Log.d(TAG, "startDownload: 下载地址错误（${downloadUrl}），请检查后再尝试！")
 

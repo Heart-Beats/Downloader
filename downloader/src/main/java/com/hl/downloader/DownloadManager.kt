@@ -30,7 +30,9 @@ object DownloadManager {
     ) {
         this.downloadListener = downloadListener
         mainScope = MainScope()
-        downloadTask = DownloadTask(context, downloadUrl, maxDownloadCore, saveFilePath, exceptionHandler)
+        if (downloadTask == null) {
+            downloadTask = DownloadTask(context, downloadUrl, maxDownloadCore, saveFilePath, exceptionHandler)
+        }
         downloadTask?.startDownload()
     }
 
