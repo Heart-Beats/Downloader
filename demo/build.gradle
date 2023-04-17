@@ -58,7 +58,7 @@ configurations.all {
     resolutionStrategy {
         dependencySubstitution {
             if (useRemote) {
-                substitute project(':downloader') with module('com.github.Heart-Beats:Downloader:v1.0.1')
+                substitute project(':downloader') using module('com.github.Heart-Beats:Downloader:v+')
             }
         }
     }

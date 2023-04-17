@@ -96,7 +96,6 @@ import java.util.concurrent.TimeUnit
                      downloadStatusListener?.downloadStatusChange(downloadStatus)
 
                      // 下载暂停时跳出循环，停止写流到文件
-                     Log.e(TAG, "onResponse: 暂停下载 ----> $this")
                      break
                  } else {
                      randomAccessFile.write(byteArray, 0, len)
