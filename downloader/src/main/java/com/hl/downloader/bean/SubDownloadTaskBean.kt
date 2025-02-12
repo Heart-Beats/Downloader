@@ -1,5 +1,6 @@
 package com.hl.downloader.bean
 
+import androidx.annotation.Keep
 import com.hl.downloader.DownloadStatus
 import java.io.File
 
@@ -7,6 +8,7 @@ import java.io.File
  * @author  张磊  on  2023/04/12 at 15:37
  * Email: 913305160@qq.com
  */
+@Keep
 data class SubDownloadTaskBean(
 	val downLoadUrl: String,
 	val startPos: Long? = null,

@@ -7,7 +7,11 @@ import android.util.Patterns
 import androidx.core.content.edit
 import com.hl.downloader.bean.SubDownloadTaskBean
 import com.hl.downloader.utils.GsonUtil
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -273,8 +277,7 @@ internal class DownloadTask(
         return returnValue
     }
 
-    private inner class DownloadStatusListener(val needSaveTask: Boolean = true) :
-            OnDownloadStatusListener {
+    private inner class DownloadStatusListener(val needSaveTask: Boolean = true) : OnDownloadStatusListener {
 
         private var  lastDownloadProgress = ""
 
@@ -289,8 +292,7 @@ internal class DownloadTask(
                     decimalFormat.roundingMode = RoundingMode.FLOOR
 
                     val sum = subDownloadTasks.fold(0L) { sum, subDownLoadTask ->
-                        sum + subDownLoadTask.subDownloadTaskBean.completeSize - (subDownLoadTask.subDownloadTaskBean.startPos
-                            ?: 0)
+                        sum + subDownLoadTask.subDownloadTaskBean.completeSize - (subDownLoadTask.subDownloadTaskBean.startPos ?: 0)
                     }
                     val currentProgress = decimalFormat.format(sum * 100f / fileSize)
                     synchronized(lastDownloadProgress) {

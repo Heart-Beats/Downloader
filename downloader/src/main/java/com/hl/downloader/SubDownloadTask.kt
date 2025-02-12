@@ -2,7 +2,12 @@
 
 import android.util.Log
 import com.hl.downloader.bean.SubDownloadTaskBean
-import okhttp3.*
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import java.io.BufferedInputStream
 import java.io.File
 import java.io.IOException
 import java.io.RandomAccessFile
@@ -88,10 +93,10 @@ import java.util.concurrent.TimeUnit
          val byteArray = ByteArray(8 * 1024)
 
          var len: Int
-         val inputStream = body?.byteStream() ?: return
+         val bufferedInputStream = BufferedInputStream(body?.byteStream() ?: return)
 
          try {
-             while (inputStream.read(byteArray).also { len = it } != -1) {
+             while (bufferedInputStream.read(byteArray).also { len = it } != -1) {
                  if (downloadStatus == DownloadStatus.DOWNLOAD_PAUSE) {
                      downloadStatusListener?.downloadStatusChange(downloadStatus)
 
@@ -124,7 +129,7 @@ import java.util.concurrent.TimeUnit
                  downloadStatusListener?.downloadStatusChange(downloadStatus, e)
              }
          } finally {
-             inputStream.close()
+             bufferedInputStream.close()
          }
      }
 
